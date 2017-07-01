@@ -55,7 +55,7 @@ load_model_hdf5 <- function(filepath, custom_objects = NULL, compile = TRUE) {
     filepath = normalize_path(filepath), 
     custom_objects = custom_objects
   )
-  if (tf_version() >= "1.3")
+  if (keras_version() >= "2.0.4")
     args$compile <- compile
   
   do.call(keras$models$load_model, args)
