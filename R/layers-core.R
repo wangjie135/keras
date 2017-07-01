@@ -224,6 +224,8 @@ layer_repeat_vector <- function(object, n,
 #' 
 #' @param f The function to be evaluated. Takes input tensor as first
 #'   argument.
+#' @param output_shape Expected output shape from the function (not required
+#'   when using TensorFlow back-end).
 #' @param mask mask
 #' @param arguments optional named list of keyword arguments to be passed to the
 #'   function.
@@ -237,11 +239,11 @@ layer_repeat_vector <- function(object, n,
 #' @family core layers   
 #'     
 #' @export
-layer_lambda <- function(object, f, mask = NULL, arguments = NULL, input_shape = NULL,
-                         batch_input_shape = NULL, batch_size = NULL, dtype = NULL, 
+layer_lambda <- function(object, f, output_shape = NULL, mask = NULL, arguments = NULL, 
+                         input_shape = NULL, batch_input_shape = NULL, batch_size = NULL, dtype = NULL, 
                          name = NULL, trainable = NULL, weights = NULL) {
   
-  call_layer(keras$layers$Lambda, object, list(
+  args <- list(
     `function` = f,
     mask = mask,
     arguments = arguments,
@@ -252,7 +254,12 @@ layer_lambda <- function(object, f, mask = NULL, arguments = NULL, input_shape =
     name = name,
     trainable = trainable,
     weights = weights
-  ))
+  )
+  
+  if (identical(backend()$backend(), "theano"))
+    args$output_shape = as_integer_tuple(output_shape)
+  
+  call_layer(keras$layers$Lambda, object, args)
   
 }
 
@@ -422,22 +429,23 @@ compose_layer <- function(object, layer) {
 }
 
 compose_layer.default <- function(object, layer) {
-  stop("Invalid input to layer function (must be a model or a tensor)",
-       call. = FALSE)
+  stop_with_invalid_layer()
 }
 
-compose_layer.tensorflow.keras.models.Sequential <- function(object, layer) {
+compose_layer.keras.models.Sequential <- function(object, layer) {
   object$add(layer)
   object
 }
 
-compose_layer.tensorflow.keras.engine.topology.Layer <- function(object, layer) {
-  layer(object)
+compose_layer.python.builtin.object <- function(object, layer) {
+  if (is.function(layer))
+    layer(object)
+  else
+    stop_with_invalid_layer()
 }
 
-compose_layer.tensorflow.python.framework.ops.Tensor <- function(object, layer) {
-  layer(object)
+stop_with_invalid_layer <- function() {
+  stop("Invalid input to layer function (must be a model or a tensor)",
+       call. = FALSE)
 }
-
-
 

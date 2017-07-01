@@ -62,9 +62,22 @@ keras_model_sequential <- function(layers = NULL, name = NULL) {
 compile <- function(object, optimizer, loss, metrics = NULL, loss_weights = NULL,
                     sample_weight_mode = NULL, ...) {
   
-  # ensure we are dealing with a list of metrics
-  if (length(metrics) == 1)
-    metrics <- list(metrics)
+  # handle metrics
+  if (!is.null(metrics)) {
+    
+    # get metric names (if any)
+    metric_names <- names(metrics)
+    if (is.null(metric_names))
+      metric_names <- rep_len("", length(metrics))
+    
+    # convert metrics to a list (adding names to any custom functions)
+    metrics <- lapply(1:length(metrics), function(i) {
+      metric <- metrics[[i]]
+      if (is.function(metric) && nzchar(metric_names[[i]]))
+        attr(metric, "py_function_name") <- metric_names[[i]]
+      metric
+    })
+  }
   
   # compile model
   object$compile(
@@ -199,7 +212,7 @@ evaluate <- function(object, x, y, batch_size = 32, verbose=1, sample_weight = N
 #' 
 #' @importFrom stats predict
 #' @export
-predict.tensorflow.keras.engine.training.Model <- function(object, x, batch_size=32, verbose=0, ...) {
+predict.keras.engine.training.Model <- function(object, x, batch_size=32, verbose=0, ...) {
   
   # call predict
   object$predict(
@@ -212,7 +225,7 @@ predict.tensorflow.keras.engine.training.Model <- function(object, x, batch_size
 
 #' Generates probability or class probability predictions for the input samples.
 #' 
-#' @inheritParams predict.tensorflow.keras.engine.training.Model
+#' @inheritParams predict.keras.engine.training.Model
 #' 
 #' @param object Keras model object
 #' 
@@ -242,7 +255,7 @@ predict_classes <- function(object, x, batch_size = 32, verbose = 0) {
 
 #' Returns predictions for a single batch of samples.
 #' 
-#' @inheritParams predict.tensorflow.keras.engine.training.Model
+#' @inheritParams predict.keras.engine.training.Model
 #' 
 #' @param object Keras model object
 #' 
@@ -297,14 +310,15 @@ test_on_batch <- function(object, x, y, sample_weight = NULL) {
 
 
 #' Fits the model on data yielded batch-by-batch by a generator.
-#' 
+#'
 #' The generator is run in parallel to the model, for efficiency. For instance,
 #' this allows you to do real-time data augmentation on images on CPU in
 #' parallel to training your model on GPU.
-#' 
+#'
 #' @param object Keras model object
-#' @param generator a generator. The output of the generator must be either - a
-#'   list (inputs, targets) - a list (inputs, targets, sample_weights). All
+#' @param generator A generator (e.g. like the one provided by
+#'   [flow_images_from_directory()]. The output of the generator must be either
+#'   - a list (inputs, targets) - a list (inputs, targets, sample_weights). All
 #'   arrays should contain the same number of samples. The generator is expected
 #'   to loop over its data indefinitely. An epoch finishes when
 #'   `steps_per_epoch` batches have been seen by the model.
@@ -331,12 +345,16 @@ test_on_batch <- function(object, x, y, sample_weight = NULL) {
 #'   children processes.
 #' @param initial_epoch epoch at which to start training (useful for resuming a
 #'   previous training run)
-#'   
-#'   
+#'
+#' @note Note that the `fit_generator()` function is included for use with
+#'   built-in generators like [flow_images_from_directory()]. It's currently not
+#'   possible to implement generators in R. If you want to stream training data
+#'   within R you should use the [train_on_batch()] function.
+#'
 #' @return Training history object (invisibly)
-#'   
+#'
 #' @family model functions
-#'   
+#'
 #' @export
 fit_generator <- function(object, generator, steps_per_epoch, epochs = 1, verbose = 1, 
                           callbacks = NULL, validation_data = NULL, validation_steps = NULL, 
@@ -401,7 +419,7 @@ evaluate_generator <- function(object, generator, steps, max_q_size = 10, worker
 #' The generator should return the same kind of data as accepted by 
 #' `predict_on_batch()`.
 #' 
-#' @inheritParams predict.tensorflow.keras.engine.training.Model
+#' @inheritParams predict.keras.engine.training.Model
 #' 
 #' @param object Keras model object
 #' @param generator Generator yielding batches of input samples.
@@ -432,7 +450,8 @@ predict_generator <- function(object, generator, steps, max_q_size = 10, workers
     workers = as.integer(workers),
     pickle_safe = pickle_safe
   )
-  if (tf_version() >= "1.2")
+  
+  if (keras_version() >= "2.0.1")
     args$verbose <- as.integer(verbose)
   
   do.call(object$predict_generator, args)
@@ -484,7 +503,7 @@ pop_layer <- function(object) {
 #' @family model functions
 #' 
 #' @export
-summary.tensorflow.keras.engine.training.Model <- function(object, line_length = getOption("width"), positions = NULL, ...) {
+summary.keras.engine.training.Model <- function(object, line_length = getOption("width"), positions = NULL, ...) {
   if (py_is_null_xptr(object))
     cat("<pointer: 0x0>\n")
   else {
@@ -494,7 +513,7 @@ summary.tensorflow.keras.engine.training.Model <- function(object, line_length =
 
 #' @importFrom reticulate py_str
 #' @export
-py_str.tensorflow.keras.engine.training.Model <- function(object,  line_length = getOption("width"), positions = NULL, ...) {
+py_str.keras.engine.training.Model <- function(object,  line_length = getOption("width"), positions = NULL, ...) {
   paste0("Model\n", py_capture_output(object$summary(line_length = line_length, positions = positions), type = "stdout"))
 }
 
