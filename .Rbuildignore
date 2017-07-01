@@ -18,5 +18,5 @@
 ^tests/testthat/training.csv
 ^.*\.pyc$
 ^.*__pycache__$
-
+.travis.yml
 ^_pkgdown\.yml$
