@@ -1,0 +1,51 @@
+#Hi, guys,
+
+#I am doing a lstm model with n*28 training x and n*1 training Y, which n is row and 28 are the number of factors.
+# what I suppose to do is to use the X to predict Y with a m timestep.
+#Then, I wrote as follows:
+
+train_x_test <- keras_array(as.data.frame(scale(train_x, center = T, scale = T)), dim = c(nrow(train_x)-cycle, timestep, no_factors))
+test_x_test <- keras_array(as.data.frame(scale(test_x, center = T, scale = T), dim = c(nrow(test_x)-cycle, timestep, no_factors))
+#converting the target variable to once hot encoded vectors using keras inbuilt function
+
+train_y_test <- keras_array(as.data.frame(train_y[-1: -(cycle+1)]),dim = c(nrow(train_x)-cycle, timestep, no_factors))
+test_y_test <- keras_array(as.data.frame(train_y), dim =  c(timestp, no_factors))
+#
+# #defining a keras sequential model
+model <- keras_model_sequential()
+layers <- c(no_factors, 32, 1)
+#input_shape has 8 timesteps with number of factors
+model %>%
+  layer_lstm(units = layers[2],
+             input_shape = c(timestep, layers[1]),
+             kernel_regularizer = regularizer_l2(0.1),
+             dropout = 0.2)
+#input the second layers parameters  
+model %>%
+  layer_dense(units = layers[3], 
+              kernel_regularizer = regularizer_l2(0.1)) %>%
+  layer_activation(activation = 'linear')
+#
+#loss function
+model %>% compile(
+  loss = "mean_squared_error",
+  optimizer = optimizer_adam(lr=0.001))
+#
+#fitting the model on the training dataset
+model %>% fit(train_x_test, train_y_test, batch_size = 100, epochs = 500)
+
+# Unfortunately, there is a error as follows:
+Error in py_call_impl(callable, dots$args, dots$keywords) : 
+  ValueError: No data provided for "lstm_1_input". Need data for each key in: ['lstm_1_input']
+
+Detailed traceback: 
+  File "D:\Anaconda\lib\site-packages\keras\models.py", line 867, in fit
+    initial_epoch=initial_epoch)
+  File "D:\Anaconda\lib\site-packages\keras\engine\training.py", line 1522, in fit
+    batch_size=batch_size)
+  File "D:\Anaconda\lib\site-packages\keras\engine\training.py", line 1378, in _standardize_user_data
+    exception_prefix='input')
+  File "D:\Anaconda\lib\site-packages\keras\engine\training.py", line 68, in _standardize_input_data
+    str(names))
+    
+    Help! what is wrong with that?
